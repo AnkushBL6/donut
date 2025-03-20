@@ -83,12 +83,23 @@ def train(config):
     model_module = DonutModelPLModule(config)
     data_module = DonutDataPLModule(config)
 
-    # add datasets to data_module
+    # Add special tokens for invoice-specific fields
+    special_tokens = [
+        "invoice_number", "date", "total", "sender_name", "recipient_name",
+        "subtotal", "tax_rate", "tax_amount", "total_amount", "currency",
+        "bank_name", "bank_acc_no", "bank_routing", "bank_swift", "bank_iban",
+        "bank_branch", "bank_acc_name", "description", "sku", "quantity",
+        "unit_price", "amount", "tax", "line_total"
+    ]
+    model_module.model.decoder.add_special_tokens(special_tokens)
+    model_module.model.decoder.resize_token_embeddings(len(model_module.model.decoder.tokenizer))
+
+    # Add datasets to data_module
     datasets = {"train": [], "validation": []}
     for i, dataset_name_or_path in enumerate(config.dataset_name_or_paths):
-        task_name = os.path.basename(dataset_name_or_path)  # e.g., cord-v2, docvqa, rvlcdip, ...
+        task_name = os.path.basename(dataset_name_or_path)  # e.g., "invoices_dataset"
         
-        # add categorical special tokens (optional)
+        # Add categorical special tokens (optional, kept for compatibility)
         if task_name == "rvlcdip":
             model_module.model.decoder.add_special_tokens([
                 "<advertisement/>", "<budget/>", "<email/>", "<file_folder/>", 
@@ -113,9 +124,6 @@ def train(config):
                     sort_json_key=config.sort_json_key,
                 )
             )
-            # prompt_end_token is used for ignoring a given prompt in a loss function
-            # for docvqa task, i.e., {"question": {used as a prompt}, "answer": {prediction target}},
-            # set prompt_end_token to "<s_answer>"
     data_module.train_datasets = datasets["train"]
     data_module.val_datasets = datasets["validation"]
 
